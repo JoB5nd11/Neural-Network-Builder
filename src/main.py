@@ -1,62 +1,13 @@
 import pygame
+from GameObject import *
+from Neuron import *
+from UI import *
 pygame.font.init()
 pygame.display.set_caption('Neural Network Builder')
 #pygame.display.set_icon(...)
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
-
-class GameObject:
-    def __init__(self, x, y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def draw(self, WIN):
-        pass
-
-    def move(self):
-        pass
-
-    def redraw_size(self, x=None, y=None, width=None, height=None):
-        if x:
-            self.x = x
-        if y:
-            self.y = y
-        if width:
-            self.width = width
-        if height:
-            self.height = height
-
-class Neuron(GameObject):
-    def __init__(self, x, y, width, height, color=(230, 230, 230), type=None,
-                 text_color=(230, 230, 230), text_margin=10, inv=False):
-        super().__init__(x, y, width, height)
-        self.color = color
-        self.type = type
-        self.text_color = text_color
-        self.text_margin = text_margin
-
-    def draw(self, WIN):
-        pygame.draw.circle(WIN, self.color, (self.x, self.y), self.width)
-        self.draw_label(WIN)
-
-    def draw_label(self, WIN):
-        #initialize font
-        label_font = pygame.font.SysFont("rubik", 25)
-
-        #render text
-        label = label_font.render(str(self.type), 1, self.text_color)
-        WIN.blit(label, (self.x - int(label.get_width() / 2), self.y + self.height + self.text_margin))
-
-class Inventory(GameObject):
-    def __init__(self, x, y, width, height, color=(80, 80, 80)):
-        super().__init__(x, y, width, height)
-        self.color = color
-
-    def draw(self, WIN):
-        pygame.draw.rect(WIN, self.color, pygame.Rect(self.x, self.y, self.width, self.height))
 
 class App:
     def __init__(self, width=WINDOW_WIDTH, height=WINDOW_HEIGHT, fps=60):
@@ -66,14 +17,16 @@ class App:
         self.FPS = fps
         self.clock = pygame.time.Clock()
         self.objects = []
+        self.object_in_hand = None
 
         self.setup()
 
     def run(self):
-        global WINDOW_WIDTH, WINDOW_HEIGHT
+        global WINDOW_WIDTH, WINDOW_HEIGHT, CLICK_DOWN
         run = True
         while run:
             self.clock.tick(self.FPS)
+            Mouse_x, Mouse_y = pygame.mouse.get_pos()
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -81,10 +34,28 @@ class App:
 
                 elif event.type == pygame.VIDEORESIZE:
                     WINDOW_WIDTH, WINDOW_HEIGHT = event.dict["size"]
-                    self.objects[0].redraw_size(y=WINDOW_HEIGHT-100, width=WINDOW_WIDTH)
-                    self.objects[1].redraw_size(y=WINDOW_HEIGHT-60)
-                    self.objects[2].redraw_size(y=WINDOW_HEIGHT-60)
-                    self.objects[3].redraw_size(y=WINDOW_HEIGHT-60)
+                    self.objects[0].redraw(y=WINDOW_HEIGHT-100, width=WINDOW_WIDTH)
+                    self.objects[1].redraw(y=WINDOW_HEIGHT-60)
+                    self.objects[2].redraw(y=WINDOW_HEIGHT-60)
+                    self.objects[3].redraw(y=WINDOW_HEIGHT-60)
+
+                elif(event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                    if(self.object_in_hand and not self.objects[0].collision_box.clicked(Mouse_x, Mouse_y)):
+                        self.objects.append(self.object_in_hand)
+                        self.object_in_hand = None
+                    else:
+                        for obj in self.objects:
+                            if(obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y)):
+                                if(obj.obj_type == "Neuron" and obj.inv):
+                                    new_Neuron = Neuron(obj.x, obj.y, obj.width, obj.height,
+                                                        color=obj.color, type=None)
+                                    self.object_in_hand = new_Neuron
+                                elif(obj.obj_type == "Neuron" and not obj.inv):
+                                    self.object_in_hand = obj
+
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self.object_in_hand = None
 
             for obj in self.objects:
                 obj.move()
@@ -105,7 +76,7 @@ class App:
                                     color=(230, 230, 200), type="Middle", inv=True)
         self.objects.append(menu_neuron_middle)
         menu_neuron_output = Neuron(neuron_inv_spacing + 2*(neuron_inv_spacing + 40), WINDOW_HEIGHT-60, 20, 20,
-                                    color=(134, 133, 239), type="Output", inv=True)
+                                    color=(239, 160, 162), type="Output", inv=True)
         self.objects.append(menu_neuron_output)
 
     def redraw_window(self):
@@ -113,6 +84,14 @@ class App:
         #draw stuff
         for obj in self.objects:
             obj.draw(self.WIN)
+            if obj.collision_box:
+                #obj.collision_box.draw(self.WIN)
+                pass
+
+        if self.object_in_hand:
+            Mouse_x, Mouse_y = pygame.mouse.get_pos()
+            self.object_in_hand.redraw(x=Mouse_x, y=Mouse_y)
+            self.object_in_hand.draw(self.WIN)
 
         pygame.display.update()
 
