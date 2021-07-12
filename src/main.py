@@ -23,13 +23,22 @@ class App:
         self.labels = []
         self.object_in_hand = None
 
+        self.neuron_size = 20
+
+        self.grid_enabled = False
+        self.current_grid_size = self.neuron_size * 2
+        self.grid = Grid(self.current_grid_size)
+
         self.setup()
 
     def run(self):
         global WINDOW_WIDTH, WINDOW_HEIGHT, CLICK_DOWN
         run = True
         while run:
+            self.draw_fps()
             self.clock.tick(self.FPS)
+            #self.clock.tick()
+
             Mouse_x, Mouse_y = pygame.mouse.get_pos()
 
             for event in pygame.event.get():
@@ -44,8 +53,12 @@ class App:
                     self.objects[3].redraw(y=WINDOW_HEIGHT-60)
                     self.objects[4].redraw(y=WINDOW_HEIGHT-60)
 
+
                 elif(event.type == pygame.MOUSEBUTTONUP and event.button == 1):
                     if(self.object_in_hand and not self.objects[0].collision_box.clicked(Mouse_x, Mouse_y)):
+                        #Object gets placed
+                        if self.grid_enabled:
+                            self.object_in_hand.x, self.object_in_hand.y = self.grid.get_best_xy(self.object_in_hand.x, self.object_in_hand.y)
                         self.objects.append(self.object_in_hand)
                         self.object_in_hand = None
                     else:
@@ -62,22 +75,30 @@ class App:
                             if(button.collision_box and button.collision_box.clicked(Mouse_x, Mouse_y)):
                                 if button.is_toggle and not button.is_pressed:
                                     button.is_pressed = True
-                                    button.draw(self.WIN)
                                 elif button.is_toggle and button.is_pressed:
                                     button.is_pressed = False
-                                    button.draw(self.WIN)
+
+                                button.draw(self.WIN)
+
+                                if button.name == "grid_button" and button.is_pressed:
+                                    self.grid_enabled = True
+                                elif button.name == "grid_button" and not button.is_pressed:
+                                    self.grid_enabled = False
 
                                 elif button.name == "grid_smaller":
                                     for l in self.labels:
-                                        if l.name == "grid_size_label":
+                                        if l.name == "grid_size_label" and self.grid.size > 1:
                                             l.text = str(int(l.text) - 1)
-                                            l.draw(self.WIN)
+                                            self.redraw_window()
+                                            self.current_grid_size -= 1
+                                            self.grid.size = self.current_grid_size
                                 elif button.name == "grid_bigger":
                                     for l in self.labels:
                                         if l.name == "grid_size_label":
                                             l.text = str(int(l.text) + 1)
-                                            l.draw(self.WIN)
-
+                                            self.redraw_window()
+                                            self.current_grid_size += 1
+                                            self.grid.size = self.current_grid_size
 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -97,32 +118,37 @@ class App:
 
         #Neuron in Inventory
         neuron_inv_spacing = 70
-        menu_neuron_input = Neuron(neuron_inv_spacing, WINDOW_HEIGHT-60, 20, 20,
+        menu_neuron_input = Neuron(neuron_inv_spacing, WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
                                     color=(211, 251, 216), type="Input", inv=True)
         self.objects.append(menu_neuron_input)
-        menu_neuron_middle = Neuron(neuron_inv_spacing + (neuron_inv_spacing + 40), WINDOW_HEIGHT-60, 20, 20,
+        menu_neuron_middle = Neuron(neuron_inv_spacing + (neuron_inv_spacing + 40), WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
                                     color=(230, 230, 200), type="Middle", inv=True)
         self.objects.append(menu_neuron_middle)
-        menu_neuron_output = Neuron(neuron_inv_spacing + 2*(neuron_inv_spacing + 40), WINDOW_HEIGHT-60, 20, 20,
+        menu_neuron_output = Neuron(neuron_inv_spacing + 2*(neuron_inv_spacing + 40), WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
                                     color=(239, 160, 162), type="Output", inv=True)
         self.objects.append(menu_neuron_output)
 
         #Img Buttons
         mediapath = os.path.abspath(os.path.join(os.getcwd(), os.pardir) + str("\\media\\"))
 
-        grid_button = ImgButton(10, 10, 30, 30, img=str(mediapath + "\\grid_off.png"), img_pressed=str(mediapath + "\\grid_on.png"), toggle=True)
+        grid_button = ImgButton(10, 10, 30, 30, img=str(mediapath + "\\grid_off.png"), img_pressed=str(mediapath + "\\grid_on.png"), toggle=True, name ="grid_button")
         self.buttons.append(grid_button)
 
         arrow_left_button = ImgButton(60, 10, 30, 30, img=str(mediapath + "\\arrow_left.png"), name="grid_smaller")
         self.buttons.append(arrow_left_button)
-        grid_detail_label = Label(95, 10, 30, 30, text="10", name="grid_size_label")
+        grid_detail_label = Label(95, 10, 30, 30, text=str(self.current_grid_size), name="grid_size_label")
         self.labels.append(grid_detail_label)
         arrow_right_button = ImgButton(130, 10, 30, 30, img=str(mediapath + "\\arrow_right.png"), name="grid_bigger")
         self.buttons.append(arrow_right_button)
 
+        self.redraw_window()
+
     def redraw_window(self):
         self.WIN.fill((48, 48, 48))
         #draw stuff
+        if self.grid_enabled:
+            self.grid.draw(self.WIN, WINDOW_WIDTH, WINDOW_HEIGHT)
+
         for obj in self.objects:
             obj.draw(self.WIN)
             if obj.collision_box:
@@ -131,6 +157,7 @@ class App:
 
         self.draw_buttons()
         self.draw_labels()
+        self.draw_fps()
 
         if self.object_in_hand:
             Mouse_x, Mouse_y = pygame.mouse.get_pos()
@@ -152,6 +179,15 @@ class App:
             if l.collision_box:
                 #l.collision_box.draw(self.WIN)
                 pass
+
+    def draw_fps(self):
+        fps_background = Inventory(WINDOW_WIDTH - 100, 10, 100, 30)
+        fps_background.draw(self.WIN)
+        fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(self.clock.get_fps(), 0)), name="fps_label", color=(0, 230, 0))
+        fps_label.draw(self.WIN)
+        pygame.display.update()
+        #self.labels.append(grid_detail_label)
+
 
 if __name__ == "__main__":
     app = App()
