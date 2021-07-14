@@ -9,6 +9,7 @@ class GameObject:
         self.height = height
         self.obj_type = None
         self.collision_box = None
+        self.grid_x, self.grid_y = None, None
 
     def draw(self, WIN):
         pass
