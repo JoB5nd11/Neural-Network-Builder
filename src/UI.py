@@ -1,8 +1,9 @@
 import pygame
+from Constants import *
 from GameObject import *
 
 class Inventory(GameObject):
-    def __init__(self, x, y, width, height, color=(80, 80, 80)):
+    def __init__(self, x, y, width, height, color=LIGHT_GRAY):
         super().__init__(x, y, width, height)
         self.color = color
         self.add_collision_box()
@@ -11,7 +12,7 @@ class Inventory(GameObject):
         pygame.draw.rect(WIN, self.color, pygame.Rect(self.x, self.y, self.width, self.height))
 
 class Grid:
-    def __init__(self, size, color=(130, 130, 130)):
+    def __init__(self, size, color=LIGHT_GRAY):
         self.size = size
         self.color = color
         self.draw_start_x, self.draw_start_y = 0, 50
@@ -108,7 +109,7 @@ class ImgButton(GameObject):
         WIN.blit(display_img, (self.x, self.y))
 
 class Label(GameObject):
-    def __init__(self, x, y, width, height, text="", color=(230, 230, 230), name=None):
+    def __init__(self, x, y, width, height, text="", color=WHITE, name=None):
         super().__init__(x, y, width, height)
         self.text = text
         self.color = color

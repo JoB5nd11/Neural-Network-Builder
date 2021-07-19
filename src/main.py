@@ -1,5 +1,6 @@
 import pygame
 import os
+from Constants import *
 from GameObject import *
 from Neuron import *
 from UI import *
@@ -7,11 +8,6 @@ from UI import *
 pygame.font.init()
 pygame.display.set_caption('Neural Network Builder')
 #pygame.display.set_icon(...)
-
-WINDOW_WIDTH = 1280
-WINDOW_HEIGHT = 720
-
-EMPTY = pygame.Color(0, 0, 0, 0)
 
 class App:
     def __init__(self, width=WINDOW_WIDTH, height=WINDOW_HEIGHT, fps=60):
@@ -21,6 +17,10 @@ class App:
         self.WIN = pygame.display.set_mode((self.WIDTH, self.HEIGHT), pygame.RESIZABLE)
         self.FPS = fps
         self.clock = pygame.time.Clock()
+        self.temp = None
+
+        #Visual variables ?
+        self.line_width = 2
 
         #Lists that hold all objects of the programm
         self.objects = []
@@ -33,7 +33,7 @@ class App:
         #Grid setup and variables
         self.grid_enabled = True
         self.current_grid_size = 40
-        self.grid = Grid(self.current_grid_size, color=(65, 65, 65))
+        self.grid = Grid(self.current_grid_size, color=LIGHT_GRAY)
 
         #TODO change depending on grid size
         self.neuron_size = int(self.current_grid_size / 2)
@@ -68,14 +68,36 @@ class App:
                     self.neuron_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), flags=pygame.SRCALPHA)
                     self.make_and_redraw_window()
 
+                elif(event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                    #Check if line is beginning to be drawn
+                    for obj in self.objects:
+                        if(obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y) and obj.obj_type=="Neuron" and not obj.inv):
+                            self.temp = obj
+                            break
+
                 elif(event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+                    #End line drawn from another neuron
+                    if self.temp:
+                        for obj in self.objects:
+                            if(obj != self.temp and obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y)
+                                                 and obj.obj_type=="Neuron" and not obj.inv):
+                                # Add neurons to connect list
+                                self.temp.connect_to.append(obj)
+                                obj.connect_from.append(self.temp)
+                                self.make_neuron_surface()
+                                break
+                        #If the line is not released on a neuron it is dropped
+                        #Otherwhise is kept, so no other object can be picked up
+                        else:
+                            self.temp = None
+
                     #Place object in hand on surface
                     if(self.object_in_hand and not self.objects[0].collision_box.clicked(Mouse_x, Mouse_y)):
                         self.place_object_in_hand()
                     else:
                         #Check if item is put in hand -> created by selecting from inventory
                         for obj in self.objects:
-                            if(obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y)):
+                            if(obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y) and not self.temp):
                                 self.put_neuron_in_hand(obj)
 
                         #Check for button presses
@@ -88,6 +110,8 @@ class App:
 
                                 button.draw(self.WIN)
                                 self.check_grid_button_clicks(button)
+
+                    self.temp = None
 
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:
@@ -109,13 +133,13 @@ class App:
         #Neuron in Inventory
         neuron_inv_spacing = 70
         menu_neuron_input = Neuron(neuron_inv_spacing, WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
-                                    color=(211, 251, 216), type="Input", inv=True)
+                                    color=LIGHT_GREEN, type="Input", inv=True)
         self.objects.append(menu_neuron_input)
         menu_neuron_middle = Neuron(neuron_inv_spacing + (neuron_inv_spacing + 40), WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
-                                    color=(230, 230, 200), type="Middle", inv=True)
+                                    color=LIGHT_YELLOW, type="Middle", inv=True)
         self.objects.append(menu_neuron_middle)
         menu_neuron_output = Neuron(neuron_inv_spacing + 2*(neuron_inv_spacing + 40), WINDOW_HEIGHT-60, self.neuron_size, self.neuron_size,
-                                    color=(239, 160, 162), type="Output", inv=True)
+                                    color=LIGHT_RED, type="Output", inv=True)
         self.objects.append(menu_neuron_output)
 
         #Path to image files
@@ -161,7 +185,7 @@ class App:
         self.objects[4].redraw(y=WINDOW_HEIGHT-60)
 
     def make_background_surface(self):
-        self.background_surface.fill((48, 48, 48))
+        self.background_surface.fill(GRAY)
 
         if self.grid_enabled:
             self.grid.draw(self.background_surface, WINDOW_WIDTH, WINDOW_HEIGHT)
@@ -190,7 +214,14 @@ class App:
 
     def make_neuron_surface(self):
         self.neuron_surface.fill(EMPTY)
-        #Draw objects
+
+        #Draw Lines
+        for obj in self.objects:
+            if obj.obj_type == "Neuron" and not obj.inv:
+                for end in obj.connect_to:
+                    pygame.draw.line(self.neuron_surface, WHITE, (obj.x, obj.y), (end.x, end.y), self.line_width)
+
+        #Draw Neurons
         for obj in self.objects:
             if obj.obj_type == "Neuron":
                 obj.draw(self.neuron_surface)
@@ -210,16 +241,22 @@ class App:
 
 
     def make_in_hand_surface(self):
+        self.make_neuron_surface()
         if self.object_in_hand:
             self.in_hand_surface.fill(EMPTY)
             Mouse_x, Mouse_y = pygame.mouse.get_pos()
+            if self.object_in_hand.obj_type == "Neuron":
+                for point in self.object_in_hand.connect_from:
+                    pygame.draw.line(self.in_hand_surface, WHITE, (self.object_in_hand.x, self.object_in_hand.y), (point.x, point.y), self.line_width)
+                for point in self.object_in_hand.connect_to:
+                    pygame.draw.line(self.in_hand_surface, WHITE, (self.object_in_hand.x, self.object_in_hand.y), (point.x, point.y), self.line_width)
             self.object_in_hand.redraw(x=Mouse_x, y=Mouse_y)
             self.object_in_hand.draw(self.in_hand_surface)
 
     def draw_fps(self):
         fps_background = Inventory(WINDOW_WIDTH - 100, 10, 100, 30)
         fps_background.draw(self.WIN)
-        fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(self.clock.get_fps(), 0)), name="fps_label", color=(0, 230, 0))
+        fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(self.clock.get_fps(), 0)), name="fps_label", color=CONTRAST)
         fps_label.draw(self.WIN)
         pygame.display.update()
 

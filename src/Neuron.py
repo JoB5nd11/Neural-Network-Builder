@@ -1,9 +1,10 @@
 import pygame
+from Constants import *
 from GameObject import *
 
 class Neuron(GameObject):
-    def __init__(self, x, y, width, height, color=(230, 230, 230), type=None,
-                 text_color=(230, 230, 230), text_margin=10, inv=False):
+    def __init__(self, x, y, width, height, color=WHITE, type=None,
+                 text_color=WHITE, text_margin=10, inv=False):
         super().__init__(x, y, width, height)
         self.obj_type = "Neuron"
         self.color = color
@@ -11,6 +12,8 @@ class Neuron(GameObject):
         self.text_color = text_color
         self.text_margin = text_margin
         self.inv = inv
+        self.connect_from = []
+        self.connect_to = []
         self.add_collision_box()
 
     def draw(self, WIN):

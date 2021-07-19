@@ -1,5 +1,5 @@
 import pygame
-#TODO Python include guards
+from Constants import *
 
 class GameObject:
     def __init__(self, x, y, width, height):
@@ -35,7 +35,7 @@ class GameObject:
 
 class CollisionBox(GameObject):
     def __init__(self, x=None, y=None, width=None, height=None, obj=None):
-        self.color = (255, 255, 255)
+        self.color = WHITE
         if obj:
             if obj.obj_type == "Neuron":
                 super().__init__(obj.x - obj.width, obj.y - obj.height, obj.width*2, obj.height*2)
