@@ -29,13 +29,17 @@ class App:
             #mabye all surfaces into list -> "big" storage waste?
 
         self.object_in_hand = None
+        self.select = SelectBox(0, 0, 0, 0)
+        self.select2 = SelectBox(0, 0, 0, 0)
+        self.objects_selected = []
+        self.is_selected = False
+        self.still_selected = False
 
         #Grid setup and variables
         self.grid_enabled = True
         self.current_grid_size = 40
         self.grid = Grid(self.current_grid_size, color=LIGHT_GRAY)
 
-        #TODO change depending on grid size
         self.neuron_size = int(self.current_grid_size / 2)
 
         #Different surfaces to safe fps
@@ -74,16 +78,31 @@ class App:
                         if(obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y) and obj.obj_type=="Neuron" and not obj.inv):
                             self.temp = obj
                             break
+                    else:
+                        self.is_selected = True
+                        self.still_selected = True
+                        self.select.x, self.select.y = Mouse_x, Mouse_y
+                        self.make_in_hand_surface()
+
 
                 elif(event.type == pygame.MOUSEBUTTONUP and event.button == 1):
+                    if self.is_selected:
+                        self.is_selected = False
+                        #self.select = SelectBox(0, 0, 0, 0)
+                        self.make_in_hand_surface()
+
                     #End line drawn from another neuron
-                    if self.temp:
+                    elif self.temp:
                         for obj in self.objects:
                             if(obj != self.temp and obj.collision_box and obj.collision_box.clicked(Mouse_x, Mouse_y)
                                                  and obj.obj_type=="Neuron" and not obj.inv):
                                 # Add neurons to connect list
-                                self.temp.connect_to.append(obj)
-                                obj.connect_from.append(self.temp)
+                                if(obj in self.temp.connect_to and self.temp in obj.connect_from):
+                                    self.temp.connect_to.remove(obj)
+                                    obj.connect_from.remove(self.temp)
+                                elif(obj not in self.temp.connect_to and self.temp not in obj.connect_from):
+                                    self.temp.connect_to.append(obj)
+                                    obj.connect_from.append(self.temp)
                                 self.make_neuron_surface()
                                 break
                         #If the line is not released on a neuron it is dropped
@@ -118,7 +137,7 @@ class App:
                         self.object_in_hand = None
                         self.in_hand_surface.fill(EMPTY)
 
-            if self.object_in_hand:
+            if self.object_in_hand or self.is_selected:
                 self.make_in_hand_surface()
 
             self.redraw_window()
@@ -242,8 +261,8 @@ class App:
 
     def make_in_hand_surface(self):
         self.make_neuron_surface()
+        self.in_hand_surface.fill(EMPTY)
         if self.object_in_hand:
-            self.in_hand_surface.fill(EMPTY)
             Mouse_x, Mouse_y = pygame.mouse.get_pos()
             if self.object_in_hand.obj_type == "Neuron":
                 for point in self.object_in_hand.connect_from:
@@ -252,34 +271,41 @@ class App:
                     pygame.draw.line(self.in_hand_surface, WHITE, (self.object_in_hand.x, self.object_in_hand.y), (point.x, point.y), self.line_width)
             self.object_in_hand.redraw(x=Mouse_x, y=Mouse_y)
             self.object_in_hand.draw(self.in_hand_surface)
+        elif self.is_selected or self.still_selected:
+            self.draw_selection_box()
 
     def draw_fps(self):
         fps_background = Inventory(WINDOW_WIDTH - 100, 10, 100, 30)
         fps_background.draw(self.WIN)
-        fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(self.clock.get_fps(), 0)), name="fps_label", color=CONTRAST)
+        fps = self.clock.get_fps()
+        if fps > 40:
+            fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(fps, 0)), name="fps_label", color=CONTRAST_GREEN)
+        elif fps > 24:
+            fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(fps, 0)), name="fps_label", color=CONTRAST_YELLOW)
+        else:
+            fps_label = Label(WINDOW_WIDTH - 75, 15, 100, 15, text=str(round(fps, 0)), name="fps_label", color=CONTRAST_RED)
         fps_label.draw(self.WIN)
         pygame.display.update()
 
     def check_grid_button_clicks(self, button):#
         grid_change = 2
 
+        #grid on/off
         if button.name == "grid_button" and button.is_pressed:
             self.grid_enabled = True
         elif button.name == "grid_button" and not button.is_pressed:
             self.grid_enabled = False
 
-        elif button.name == "grid_smaller":
+        #Grid size changes
+        elif(button.name == "grid_smaller" or button.name == "grid_bigger"):
+            if button.name == "grid_smaller":
+                #negative change = smaller
+                grid_change *= -1
             for l in self.labels:
                 if l.name == "grid_size_label" and self.grid.size > grid_change:
-                    l.text = str(int(l.text) - grid_change)
-                    self.current_grid_size -= grid_change
-                    self.grid.size = self.current_grid_size
-                    self.neuron_size = int(self.current_grid_size / 2)
-                    self.give_neuron_new_size_and_pos()
-        elif button.name == "grid_bigger":
-            for l in self.labels:
-                if l.name == "grid_size_label":
+                    #change grid size label
                     l.text = str(int(l.text) + grid_change)
+                    #change grid size
                     self.current_grid_size += grid_change
                     self.grid.size = self.current_grid_size
                     self.neuron_size = int(self.current_grid_size / 2)
@@ -310,6 +336,19 @@ class App:
             self.object_in_hand = obj
             self.make_background_surface()
             self.make_neuron_surface()
+
+    def draw_selection_box(self):
+        #Smart xD
+        Mouse_x, Mouse_y = pygame.mouse.get_pos()
+        self.select2 = SelectBox(self.select.x, self.select.y, abs(Mouse_x - self.select.x), abs(Mouse_y - self.select.y))
+        if Mouse_x >= self.select.x and Mouse_y < self.select.y:
+            self.select2.y = Mouse_y
+        elif Mouse_x < self.select.x and Mouse_y >= self.select.y:
+            self.select2.x = Mouse_x
+        elif Mouse_x < self.select.x and Mouse_y < self.select.y:
+            self.select2.x = Mouse_x
+            self.select2.y = Mouse_y
+        self.select2.draw(self.in_hand_surface)
 
 if __name__ == "__main__":
     app = App()

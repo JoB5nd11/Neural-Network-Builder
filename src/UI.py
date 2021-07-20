@@ -129,3 +129,13 @@ class Label(GameObject):
 
     def change_text(self, text):
         self.text = text
+
+class SelectBox(GameObject):
+    def __init__(self, x, y, width, height, color=WHITE, line_width=2):
+        super().__init__(x, y, width, height)
+        self.color = color
+        self.line_width = line_width
+
+    def draw(self, WIN):
+        pygame.draw.rect(WIN, self.color, pygame.Rect(self.x, self.y, self.width, self.height))
+        pygame.draw.rect(WIN, EMPTY, pygame.Rect(self.x + self.line_width, self.y + self.line_width, self.width - 2 * self.line_width, self.height - 2 * self.line_width))
