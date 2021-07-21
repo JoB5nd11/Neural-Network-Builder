@@ -1,9 +1,17 @@
+#Import python standard libraries
 import pygame
+import importlib
+import sys
 import os
+
+#Import own libraries for game
 from Constants import *
 from GameObject import *
 from Neuron import *
 from UI import *
+
+#Import surfaces
+#TODO
 
 pygame.font.init()
 pygame.display.set_caption('Neural Network Builder')
@@ -28,7 +36,9 @@ class App:
         self.labels = []
             #mabye all surfaces into list -> "big" storage waste?
 
+        #seems like too many selection variables?
         self.object_in_hand = None
+        self.objects_are_in_hand = False
         self.select = SelectBox(0, 0, 0, 0)
         self.select2 = SelectBox(0, 0, 0, 0)
         self.objects_selected = []
@@ -46,6 +56,7 @@ class App:
         self.background_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT))
         self.neuron_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), flags=pygame.SRCALPHA)
         self.in_hand_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), flags=pygame.SRCALPHA)
+        self.selected_surface = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), flags=pygame.SRCALPHA)
 
         self.setup()
 
@@ -89,7 +100,7 @@ class App:
                     if self.is_selected:
                         self.is_selected = False
                         #self.select = SelectBox(0, 0, 0, 0)
-                        self.make_in_hand_surface()
+                        self.check_for_selected_items()
 
                     #End line drawn from another neuron
                     elif self.temp:
@@ -109,6 +120,10 @@ class App:
                         #Otherwhise is kept, so no other object can be picked up
                         else:
                             self.temp = None
+
+                    if self.objects_are_in_hand:
+                        print("objects are now out of hand")
+                        self.objects_are_in_hand = False
 
                     #Place object in hand on surface
                     if(self.object_in_hand and not self.objects[0].collision_box.clicked(Mouse_x, Mouse_y)):
@@ -139,6 +154,9 @@ class App:
 
             if self.object_in_hand or self.is_selected:
                 self.make_in_hand_surface()
+
+            if len(self.objects_selected) > 0:
+                self.make_selected_surface()
 
             self.redraw_window()
 
@@ -194,6 +212,7 @@ class App:
         self.make_background_surface()
         self.make_neuron_surface()
         self.make_in_hand_surface()
+        self.make_selected_surface()
         self.redraw_window()
 
     def redraw_object_at_new_location(self):
@@ -260,8 +279,9 @@ class App:
 
 
     def make_in_hand_surface(self):
-        self.make_neuron_surface()
+        self.make_neuron_surface() #is needed so synapses are drawn correctly
         self.in_hand_surface.fill(EMPTY)
+
         if self.object_in_hand:
             Mouse_x, Mouse_y = pygame.mouse.get_pos()
             if self.object_in_hand.obj_type == "Neuron":
@@ -271,8 +291,13 @@ class App:
                     pygame.draw.line(self.in_hand_surface, WHITE, (self.object_in_hand.x, self.object_in_hand.y), (point.x, point.y), self.line_width)
             self.object_in_hand.redraw(x=Mouse_x, y=Mouse_y)
             self.object_in_hand.draw(self.in_hand_surface)
-        elif self.is_selected or self.still_selected:
+
+        elif self.is_selected or self.still_selected: #what is still_selected?!
             self.draw_selection_box()
+
+        inv1, inv2 = self.objects[0], self.objects[1]
+        pygame.draw.rect(self.in_hand_surface, EMPTY, pygame.Rect(inv1.x, inv1.y, inv1.width, inv1.height))
+        pygame.draw.rect(self.in_hand_surface, EMPTY, pygame.Rect(inv2.x, inv2.y, inv2.width, inv2.height))
 
     def draw_fps(self):
         fps_background = Inventory(WINDOW_WIDTH - 100, 10, 100, 30)
@@ -287,7 +312,7 @@ class App:
         fps_label.draw(self.WIN)
         pygame.display.update()
 
-    def check_grid_button_clicks(self, button):#
+    def check_grid_button_clicks(self, button):
         grid_change = 2
 
         #grid on/off
@@ -327,7 +352,10 @@ class App:
         self.in_hand_surface.fill(EMPTY)
 
     def put_neuron_in_hand(self, obj):
-        if(obj.obj_type == "Neuron" and obj.inv):
+        if obj in self.objects_selected:
+            self.objects_are_in_hand = True
+
+        elif(obj.obj_type == "Neuron" and obj.inv):
             new_Neuron = Neuron(obj.x, obj.y, self.neuron_size, self.neuron_size,
                                 color=obj.color, type=None)
             self.object_in_hand = new_Neuron
@@ -349,6 +377,28 @@ class App:
             self.select2.x = Mouse_x
             self.select2.y = Mouse_y
         self.select2.draw(self.in_hand_surface)
+
+    def check_for_selected_items(self):
+        self.object_selected = []
+        for obj in self.objects:
+            if(obj.x > self.select2.x and obj.y > self.select2.y and obj.x + obj.width < self.select2.x + self.select2.width
+                                                                 and obj.y + obj.height < self.select2.y + self.select2.height):
+                self.objects_selected.append(obj)
+
+    def make_selected_surface(self):
+        if self.objects_are_in_hand:
+            self.selected_surface.fill(EMPTY)
+            print("objects are now in hand")
+            #that a task for tomorrow? #TODO draw selected at hand
+
+
+"""
+NOTES:
+------
+for obj in self.objects_selected:
+    self.object_in_hand = obj
+    self.place_object_in_hand()
+"""
 
 if __name__ == "__main__":
     app = App()
