@@ -1,0 +1,35 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://scenes/Button.gd" type="Script" id=1]
+[ext_resource path="res://scenes/HoverInfo.tscn" type="PackedScene" id=2]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="Button" type="Button" parent="."]
+margin_left = 108.0
+margin_top = 78.0
+margin_right = 347.0
+margin_bottom = 152.0
+text = "Click Me Daddy!"
+script = ExtResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Label" type="Label" parent="."]
+margin_left = 407.0
+margin_top = 105.0
+margin_right = 496.0
+margin_bottom = 119.0
+text = "Test Test Test"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Hover Info" parent="." instance=ExtResource( 2 )]
+visible = false
+margin_right = 0.0
+margin_bottom = 0.0
+
+[connection signal="mouse_entered" from="Button" to="Button" method="_on_Button_mouse_entered"]
+[connection signal="mouse_exited" from="Button" to="Button" method="_on_Button_mouse_exited"]
